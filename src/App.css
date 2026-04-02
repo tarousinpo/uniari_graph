@@ -179,6 +179,11 @@ body {
   background: #e8f1ff;
 }
 
+.drop-zone.editing {
+  border-color: #4e9af1;
+  border-style: solid;
+}
+
 .drop-label {
   font-size: 0.75rem;
   color: #999;
@@ -192,6 +197,115 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.btn-edit-image {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.2s;
+  touch-action: manipulation;
+}
+
+.btn-edit-image:hover {
+  background: rgba(78,154,241,0.9);
+}
+
+/* Image transform editor */
+.image-transform-editor {
+  margin-top: 12px;
+  background: #f0f6ff;
+  border: 1px solid #c5daf9;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transform-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 2px;
+}
+
+.btn-transform-close {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  touch-action: manipulation;
+}
+
+.btn-transform-close:hover {
+  color: #e55;
+  background: #fef0f0;
+}
+
+.transform-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transform-row label {
+  font-size: 0.78rem;
+  color: #555;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+.transform-row input[type="range"] {
+  flex: 1;
+  accent-color: #4e9af1;
+  height: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.transform-value {
+  font-size: 0.75rem;
+  color: #666;
+  min-width: 36px;
+  text-align: right;
+}
+
+.btn-transform-reset {
+  align-self: flex-end;
+  background: none;
+  border: 1px solid #aac8f0;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: #4e9af1;
+  cursor: pointer;
+  transition: background 0.2s;
+  touch-action: manipulation;
+}
+
+.btn-transform-reset:hover {
+  background: #e0edff;
 }
 
 /* Buttons */
@@ -312,5 +426,42 @@ body {
   .left-panel {
     flex: none;
     width: 100%;
+  }
+
+  .drop-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .btn-edit-image {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  .btn-generate,
+  .btn-download {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .data-table input[type="text"],
+  .data-table input[type="number"] {
+    min-height: 38px;
+    font-size: 1rem;
+  }
+
+  .btn-remove {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  .title-input {
+    min-height: 42px;
+    font-size: 1rem;
+  }
+
+  .transform-row input[type="range"] {
+    min-height: 28px;
   }
 }

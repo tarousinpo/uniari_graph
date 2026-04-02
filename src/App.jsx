@@ -16,7 +16,9 @@ const DEFAULT_ROWS = [
 
 const MAX_TITLE_LENGTH = 50
 
-function ImageDropZone({ index, imageUrl, onImageChange }) {
+const DEFAULT_TRANSFORM = { scale: 1, offsetX: 0, offsetY: 0 }
+
+function ImageDropZone({ index, imageUrl, onImageChange, isEditing, onEditToggle }) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef(null)
 
@@ -41,7 +43,7 @@ function ImageDropZone({ index, imageUrl, onImageChange }) {
 
   return (
     <div
-      className={`drop-zone ${dragging ? 'dragging' : ''}`}
+      className={`drop-zone ${dragging ? 'dragging' : ''} ${isEditing ? 'editing' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
@@ -49,7 +51,14 @@ function ImageDropZone({ index, imageUrl, onImageChange }) {
       title={`${index + 1}位の画像`}
     >
       {imageUrl ? (
-        <img src={imageUrl} alt={`${index + 1}位`} className="drop-preview" />
+        <>
+          <img src={imageUrl} alt={`${index + 1}位`} className="drop-preview" />
+          <button
+            className="btn-edit-image"
+            onClick={(e) => { e.stopPropagation(); onEditToggle(index) }}
+            title="画像の表示を調整"
+          >⚙</button>
+        </>
       ) : (
         <span className="drop-label">🖼 {index + 1}位<br />ドロップ or クリック</span>
       )}
@@ -64,7 +73,49 @@ function ImageDropZone({ index, imageUrl, onImageChange }) {
   )
 }
 
-function PieChart({ data, images, title }) {
+function ImageTransformEditor({ index, transform, onChange, onReset, onClose }) {
+  return (
+    <div className="image-transform-editor">
+      <div className="transform-header">
+        <span>{index + 1}位の画像を調整</span>
+        <button className="btn-transform-close" onClick={onClose}>✕</button>
+      </div>
+      <div className="transform-row">
+        <label>ズーム</label>
+        <input
+          type="range" min="0.3" max="4" step="0.05"
+          value={transform.scale}
+          onChange={e => onChange(index, 'scale', parseFloat(e.target.value))}
+        />
+        <span className="transform-value">{transform.scale.toFixed(2)}x</span>
+      </div>
+      <div className="transform-row">
+        <label>横位置</label>
+        <input
+          type="range" min="-100" max="100" step="1"
+          value={transform.offsetX}
+          onChange={e => onChange(index, 'offsetX', parseFloat(e.target.value))}
+        />
+        <span className="transform-value">{transform.offsetX > 0 ? '+' : ''}{transform.offsetX}</span>
+      </div>
+      <div className="transform-row">
+        <label>縦位置</label>
+        <input
+          type="range" min="-100" max="100" step="1"
+          value={transform.offsetY}
+          onChange={e => onChange(index, 'offsetY', parseFloat(e.target.value))}
+        />
+        <span className="transform-value">{transform.offsetY > 0 ? '+' : ''}{transform.offsetY}</span>
+      </div>
+      <button
+        className="btn-transform-reset"
+        onClick={() => onReset(index)}
+      >リセット</button>
+    </div>
+  )
+}
+
+function PieChart({ data, images, transforms, title }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -112,10 +163,14 @@ function PieChart({ data, images, title }) {
         ctx.closePath()
         ctx.clip()
 
-        const scale = (R * 2) / Math.min(img.width, img.height)
-        const dw = img.width * scale
-        const dh = img.height * scale
-        ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh)
+        const t = (transforms && transforms[i]) || DEFAULT_TRANSFORM
+        const baseScale = (R * 2) / Math.min(img.width, img.height)
+        const finalScale = baseScale * t.scale
+        const dw = img.width * finalScale
+        const dh = img.height * finalScale
+        const ox = (t.offsetX / 100) * R
+        const oy = (t.offsetY / 100) * R
+        ctx.drawImage(img, cx - dw / 2 + ox, cy - dh / 2 + oy, dw, dh)
         ctx.restore()
       } else {
         ctx.fillStyle = COLORS[i % COLORS.length]
@@ -162,7 +217,7 @@ function PieChart({ data, images, title }) {
 
       startAngle += sliceAngle
     })
-  }, [data, images, title])
+  }, [data, images, transforms, title])
 
   return <canvas ref={canvasRef} width={480} height={540} className="pie-canvas" />
 }
@@ -173,6 +228,10 @@ function App() {
   const [chartData, setChartData] = useState(null)
   const [imageUrls, setImageUrls] = useState([null, null, null, null])
   const [loadedImages, setLoadedImages] = useState([null, null, null, null])
+  const [imageTransforms, setImageTransforms] = useState(
+    () => Array.from({ length: 4 }, () => ({ ...DEFAULT_TRANSFORM }))
+  )
+  const [editingIndex, setEditingIndex] = useState(null)
   const [error, setError] = useState('')
 
   const handleCellChange = (index, field, value) => {
@@ -196,6 +255,11 @@ function App() {
       next[index] = newUrl
       return next
     })
+    setImageTransforms(prev => {
+      const next = [...prev]
+      next[index] = { ...DEFAULT_TRANSFORM }
+      return next
+    })
     const img = new Image()
     img.src = newUrl
     img.onload = () => {
@@ -205,6 +269,26 @@ function App() {
         return next
       })
     }
+  }, [])
+
+  const handleTransformChange = useCallback((index, field, value) => {
+    setImageTransforms(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }, [])
+
+  const handleTransformReset = useCallback((index) => {
+    setImageTransforms(prev => {
+      const next = [...prev]
+      next[index] = { ...DEFAULT_TRANSFORM }
+      return next
+    })
+  }, [])
+
+  const handleEditToggle = useCallback((index) => {
+    setEditingIndex(prev => prev === index ? null : index)
   }, [])
 
   // Revoke all object URLs on unmount
@@ -302,7 +386,7 @@ function App() {
           </section>
 
           <section className="section">
-            <h2>上位4名の画像 <span className="hint">（ドラッグ＆ドロップ または クリック）</span></h2>
+            <h2>上位4名の画像 <span className="hint">（ドラッグ＆ドロップ または クリック / ⚙で位置調整）</span></h2>
             <div className="drop-grid">
               {[0, 1, 2, 3].map(i => (
                 <ImageDropZone
@@ -310,9 +394,20 @@ function App() {
                   index={i}
                   imageUrl={imageUrls[i]}
                   onImageChange={handleImageChange}
+                  isEditing={editingIndex === i}
+                  onEditToggle={handleEditToggle}
                 />
               ))}
             </div>
+            {editingIndex !== null && imageUrls[editingIndex] && (
+              <ImageTransformEditor
+                index={editingIndex}
+                transform={imageTransforms[editingIndex]}
+                onChange={handleTransformChange}
+                onReset={handleTransformReset}
+                onClose={() => setEditingIndex(null)}
+              />
+            )}
           </section>
 
           {error && <p className="error">{error}</p>}
@@ -322,7 +417,7 @@ function App() {
         <div className="right-panel">
           {chartData ? (
             <>
-              <PieChart data={chartData} images={chartImages} title={graphTitle} />
+              <PieChart data={chartData} images={chartImages} transforms={imageTransforms} title={graphTitle} />
               <div className="legend">
                 {chartData.map((item, i) => (
                   <div key={i} className="legend-item">

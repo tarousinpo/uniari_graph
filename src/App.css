@@ -308,6 +308,82 @@ body {
   background: #e0edff;
 }
 
+/* CSV upload */
+.csv-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.btn-csv {
+  background: none;
+  border: 1px solid #4e9af1;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  color: #4e9af1;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-csv:hover {
+  background: #e8f1ff;
+}
+
+/* Copy list */
+.copy-list-section {
+  width: 100%;
+  max-width: 440px;
+}
+
+.copy-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.copy-list-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.btn-copy {
+  background: none;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-copy:hover {
+  background: #f5f5f5;
+  border-color: #4e9af1;
+  color: #4e9af1;
+}
+
+.copy-list-area {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  background: #fafafa;
+  color: #333;
+  line-height: 1.7;
+  outline: none;
+}
+
 /* Buttons */
 .btn-generate {
   width: 100%;

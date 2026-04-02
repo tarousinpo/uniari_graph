@@ -1,0 +1,12 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background: #f0f2f5;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -64,6 +64,21 @@ body {
   font-weight: normal;
 }
 
+/* Title input */
+.title-input {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.title-input:focus {
+  border-color: #4e9af1;
+}
+
 /* Data table */
 .data-table {
   width: 100%;

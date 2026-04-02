@@ -14,6 +14,8 @@ const DEFAULT_ROWS = [
   { name: 'Dさん', value: '' },
 ]
 
+const MAX_TITLE_LENGTH = 50
+
 function ImageDropZone({ index, imageUrl, onImageChange }) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef(null)
@@ -62,7 +64,7 @@ function ImageDropZone({ index, imageUrl, onImageChange }) {
   )
 }
 
-function PieChart({ data, images }) {
+function PieChart({ data, images, title }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -71,14 +73,28 @@ function PieChart({ data, images }) {
     const ctx = canvas.getContext('2d')
     const W = canvas.width
     const H = canvas.height
+    const TITLE_H = 52
     const cx = W / 2
-    const cy = H / 2
-    const R = Math.min(W, H) * 0.38
+    const cy = TITLE_H + (H - TITLE_H) / 2
+    const R = Math.min(W, H - TITLE_H) * 0.38
 
     const total = data.reduce((s, d) => s + d.value, 0)
     if (total === 0) return
 
     ctx.clearRect(0, 0, W, H)
+
+    // Draw background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, W, H)
+
+    // Draw title
+    if (title) {
+      ctx.font = `bold ${Math.max(16, Math.round(W * 0.042))}px "Helvetica Neue", Arial, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = '#222'
+      ctx.fillText(title, W / 2, TITLE_H / 2)
+    }
 
     let startAngle = -Math.PI / 2
     const sliceAngles = []
@@ -146,13 +162,14 @@ function PieChart({ data, images }) {
 
       startAngle += sliceAngle
     })
-  }, [data, images])
+  }, [data, images, title])
 
-  return <canvas ref={canvasRef} width={480} height={480} className="pie-canvas" />
+  return <canvas ref={canvasRef} width={480} height={540} className="pie-canvas" />
 }
 
 function App() {
   const [rows, setRows] = useState(DEFAULT_ROWS)
+  const [graphTitle, setGraphTitle] = useState('')
   const [chartData, setChartData] = useState(null)
   const [imageUrls, setImageUrls] = useState([null, null, null, null])
   const [loadedImages, setLoadedImages] = useState([null, null, null, null])
@@ -233,6 +250,18 @@ function App() {
       <div className="main-layout">
         <div className="left-panel">
           <section className="section">
+            <h2>グラフタイトル</h2>
+            <input
+              type="text"
+              className="title-input"
+              value={graphTitle}
+              onChange={e => setGraphTitle(e.target.value)}
+              placeholder="例：推しメン投票結果"
+              maxLength={MAX_TITLE_LENGTH}
+            />
+          </section>
+
+          <section className="section">
             <h2>データ入力</h2>
             <table className="data-table">
               <thead>
@@ -293,7 +322,7 @@ function App() {
         <div className="right-panel">
           {chartData ? (
             <>
-              <PieChart data={chartData} images={chartImages} />
+              <PieChart data={chartData} images={chartImages} title={graphTitle} />
               <div className="legend">
                 {chartData.map((item, i) => (
                   <div key={i} className="legend-item">

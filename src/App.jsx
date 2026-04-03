@@ -14,7 +14,25 @@ const DEFAULT_ROWS = [
   { name: 'Dさん', value: '' },
 ]
 
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/)
+  const result = []
+  for (const line of lines) {
+    if (!line.trim()) continue
+    const parts = line.split(/[,\t]/)
+    if (parts.length < 2) continue
+    const name = parts[0].trim()
+    const val = parseFloat(parts[1].trim())
+    if (!name || isNaN(val) || val <= 0) continue
+    result.push({ name, value: String(val) })
+  }
+  return result
+}
+
 const MAX_TITLE_LENGTH = 50
+const MAX_LABEL_NAME_LENGTH = 8
+const LARGE_SLICE_THRESHOLD = 0.28
+const MEDIUM_SLICE_THRESHOLD = 0.12
 
 const DEFAULT_TRANSFORM = { scale: 1, offsetX: 0, offsetY: 0 }
 
@@ -192,29 +210,38 @@ function PieChart({ data, images, transforms, title }) {
       startAngle += sliceAngle
     })
 
-    // Draw percentage labels
+    // Draw name + value labels
     startAngle = -Math.PI / 2
     data.forEach((item, i) => {
       const { sliceAngle } = sliceAngles[i]
       const midAngle = startAngle + sliceAngle / 2
-      const pct = ((item.value / total) * 100).toFixed(1)
 
       const labelR = R * 0.65
       const lx = cx + labelR * Math.cos(midAngle)
       const ly = cy + labelR * Math.sin(midAngle)
 
-      ctx.font = 'bold 13px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
+      ctx.shadowColor = 'rgba(0,0,0,0.75)'
+      ctx.shadowBlur = 4
+      ctx.fillStyle = '#fff'
 
-      if (sliceAngle > 0.15) {
-        ctx.shadowColor = 'rgba(0,0,0,0.7)'
-        ctx.shadowBlur = 4
-        ctx.fillStyle = '#fff'
-        ctx.fillText(`${pct}%`, lx, ly)
-        ctx.shadowBlur = 0
+      const valText = item.value.toLocaleString()
+      if (sliceAngle > LARGE_SLICE_THRESHOLD) {
+        // Large slice: name on top line, value below
+        const displayName = item.name.length > MAX_LABEL_NAME_LENGTH
+          ? item.name.slice(0, MAX_LABEL_NAME_LENGTH - 1) + '…'
+          : item.name
+        ctx.font = 'bold 13px sans-serif'
+        ctx.fillText(displayName, lx, ly - 9)
+        ctx.fillText(valText, lx, ly + 9)
+      } else if (sliceAngle > MEDIUM_SLICE_THRESHOLD) {
+        // Medium slice: value only
+        ctx.font = 'bold 13px sans-serif'
+        ctx.fillText(valText, lx, ly)
       }
 
+      ctx.shadowBlur = 0
       startAngle += sliceAngle
     })
   }, [data, images, transforms, title])
@@ -233,6 +260,26 @@ function App() {
   )
   const [editingIndex, setEditingIndex] = useState(null)
   const [error, setError] = useState('')
+  const [csvError, setCsvError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const csvInputRef = useRef(null)
+
+  const handleCsvUpload = (e) => {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    setCsvError('')
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const parsed = parseCSV(ev.target.result)
+      if (parsed.length === 0) {
+        setCsvError('CSVを読み込めませんでした。「名前,数値」の2列形式か確認してください。')
+        return
+      }
+      setRows(parsed)
+    }
+    reader.readAsText(file, 'UTF-8')
+  }
 
   const handleCellChange = (index, field, value) => {
     setRows(prev => prev.map((r, i) => i === index ? { ...r, [field]: value } : r))
@@ -323,6 +370,18 @@ function App() {
     link.click()
   }
 
+  const listText = chartData
+    ? chartData.map((item, i) => `${i + 1}位\t${item.name}\t${item.value.toLocaleString()}`).join('\n')
+    : ''
+
+  const handleCopy = () => {
+    if (!listText) return
+    navigator.clipboard.writeText(listText).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   const chartImages = chartData
     ? chartData.slice(0, 4).map((_, i) => loadedImages[i] || null)
     : loadedImages
@@ -347,6 +406,20 @@ function App() {
 
           <section className="section">
             <h2>データ入力</h2>
+            <div className="csv-upload-row">
+              <button className="btn-csv" onClick={() => csvInputRef.current.click()}>
+                📂 CSVで読み込む
+              </button>
+              <span className="hint">（名前,数値 の2列）</span>
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,.tsv,.txt"
+                style={{ display: 'none' }}
+                onChange={handleCsvUpload}
+              />
+            </div>
+            {csvError && <p className="error">{csvError}</p>}
             <table className="data-table">
               <thead>
                 <tr>
@@ -437,6 +510,19 @@ function App() {
                 ))}
               </div>
               <button className="btn-download" onClick={handleDownload}>⬇ PNG でダウンロード</button>
+              <div className="copy-list-section">
+                <div className="copy-list-header">
+                  <span className="copy-list-title">グラフ使用データ一覧</span>
+                  <button className="btn-copy" onClick={handleCopy}>
+                    {copied ? '✓ コピーしました' : '📋 コピー'}
+                  </button>
+                </div>
+                <textarea
+                  className="copy-list-area"
+                  readOnly
+                  value={listText}
+                />
+              </div>
             </>
           ) : (
             <div className="placeholder">

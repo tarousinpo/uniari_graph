@@ -238,8 +238,9 @@ function PieChart({ data, images, transforms, title }) {
 
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.shadowColor = 'rgba(0,0,0,0.75)'
-        ctx.shadowBlur = 4
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)'
+        ctx.lineWidth = 4
+        ctx.lineJoin = 'round'
         ctx.fillStyle = '#fff'
 
         const valText = item.value.toLocaleString()
@@ -249,16 +250,18 @@ function PieChart({ data, images, transforms, title }) {
             ? item.name.slice(0, MAX_LABEL_NAME_LENGTH - 1) + '…'
             : item.name
           ctx.font = `bold 13px ${POP_FONT}`
+          ctx.strokeText(displayName, lx, ly - 9)
           ctx.fillText(displayName, lx, ly - 9)
+          ctx.strokeText(valText, lx, ly + 9)
           ctx.fillText(valText, lx, ly + 9)
         } else if (sliceAngle > MEDIUM_SLICE_THRESHOLD) {
           // Medium slice: value only
           ctx.font = `bold 13px ${POP_FONT}`
+          ctx.strokeText(valText, lx, ly)
           ctx.fillText(valText, lx, ly)
         }
         // Slices below MEDIUM_SLICE_THRESHOLD get no label (too small to show text legibly)
 
-        ctx.shadowBlur = 0
         startAngle += sliceAngle
       })
 

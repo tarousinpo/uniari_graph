@@ -30,9 +30,9 @@ function parseCSV(text) {
 }
 
 const MAX_TITLE_LENGTH = 50
-const MAX_LABEL_NAME_LENGTH = 8
+const MAX_LABEL_NAME_LENGTH = 5
 const LARGE_SLICE_THRESHOLD = 0.28
-const MEDIUM_SLICE_THRESHOLD = 0.12
+const MEDIUM_SLICE_THRESHOLD = 0.15
 
 const DEFAULT_TRANSFORM = { scale: 1, offsetX: 0, offsetY: 0 }
 
@@ -133,6 +133,13 @@ function ImageTransformEditor({ index, transform, onChange, onReset, onClose }) 
   )
 }
 
+const CANVAS_W = 720
+const CANVAS_H = 540
+const LEGEND_X = 490
+const LEGEND_ROW_H = 26
+const LEGEND_SWATCH_W = 14
+const LEGEND_SWATCH_GAP = 6
+
 function PieChart({ data, images, transforms, title }) {
   const canvasRef = useRef(null)
 
@@ -143,9 +150,11 @@ function PieChart({ data, images, transforms, title }) {
     const W = canvas.width
     const H = canvas.height
     const TITLE_H = 52
-    const cx = W / 2
+    // Pie occupies the left portion of the canvas
+    const PIE_AREA_W = LEGEND_X - 10
+    const cx = PIE_AREA_W / 2
     const cy = TITLE_H + (H - TITLE_H) / 2
-    const R = Math.min(W, H - TITLE_H) * 0.38
+    const R = Math.min(PIE_AREA_W, H - TITLE_H) * 0.42
 
     const total = data.reduce((s, d) => s + d.value, 0)
     if (total === 0) return
@@ -156,9 +165,9 @@ function PieChart({ data, images, transforms, title }) {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, W, H)
 
-    // Draw title
+    // Draw title (centered over the full canvas)
     if (title) {
-      ctx.font = `bold ${Math.max(16, Math.round(W * 0.042))}px "Helvetica Neue", Arial, sans-serif`
+      ctx.font = `bold ${Math.max(16, Math.round(W * 0.032))}px "Helvetica Neue", Arial, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = '#222'
@@ -210,7 +219,7 @@ function PieChart({ data, images, transforms, title }) {
       startAngle += sliceAngle
     })
 
-    // Draw name + value labels
+    // Draw name + value labels inside pie slices
     startAngle = -Math.PI / 2
     data.forEach((item, i) => {
       const { sliceAngle } = sliceAngles[i]
@@ -228,7 +237,7 @@ function PieChart({ data, images, transforms, title }) {
 
       const valText = item.value.toLocaleString()
       if (sliceAngle > LARGE_SLICE_THRESHOLD) {
-        // Large slice: name on top line, value below
+        // Large slice: truncated name on top line, value below
         const displayName = item.name.length > MAX_LABEL_NAME_LENGTH
           ? item.name.slice(0, MAX_LABEL_NAME_LENGTH - 1) + '…'
           : item.name
@@ -240,13 +249,54 @@ function PieChart({ data, images, transforms, title }) {
         ctx.font = 'bold 13px sans-serif'
         ctx.fillText(valText, lx, ly)
       }
+      // Slices below MEDIUM_SLICE_THRESHOLD get no label (too small to show text legibly)
 
       ctx.shadowBlur = 0
       startAngle += sliceAngle
     })
+
+    // Draw ranked legend list on the right side of the canvas
+    const legendStartY = TITLE_H + 20
+    const legendMaxW = W - LEGEND_X - 12
+
+    ctx.textBaseline = 'middle'
+    ctx.shadowBlur = 0
+
+    data.forEach((item, i) => {
+      const rowY = legendStartY + i * LEGEND_ROW_H
+      if (rowY + LEGEND_ROW_H > H) return  // don't overflow canvas
+
+      // Colored square
+      ctx.fillStyle = COLORS[i % COLORS.length]
+      ctx.fillRect(LEGEND_X, rowY + 3, LEGEND_SWATCH_W, LEGEND_SWATCH_W)
+
+      // Rank + name + value text
+      const rankStr = `${i + 1}.`
+      const nameStr = item.name
+      const valStr = `　${item.value.toLocaleString()}`
+
+      ctx.font = 'bold 13px "Helvetica Neue", Arial, sans-serif'
+      ctx.fillStyle = '#222'
+      ctx.textAlign = 'left'
+
+      // Measure available space and truncate name if needed
+      const rankW = ctx.measureText(rankStr + ' ').width
+      const valW = ctx.measureText(valStr).width
+      const nameAvailW = legendMaxW - LEGEND_SWATCH_W - LEGEND_SWATCH_GAP - rankW - valW
+      let displayName = nameStr
+      if (ctx.measureText(displayName).width > nameAvailW) {
+        while (displayName.length > 1 && ctx.measureText(displayName + '…').width > nameAvailW) {
+          displayName = displayName.slice(0, -1)
+        }
+        displayName = displayName + '…'
+      }
+
+      const textX = LEGEND_X + LEGEND_SWATCH_W + LEGEND_SWATCH_GAP
+      ctx.fillText(rankStr + ' ' + displayName + valStr, textX, rowY + 10)
+    })
   }, [data, images, transforms, title])
 
-  return <canvas ref={canvasRef} width={480} height={540} className="pie-canvas" />
+  return <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="pie-canvas" />
 }
 
 function App() {

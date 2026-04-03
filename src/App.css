@@ -335,7 +335,7 @@ body {
 /* Copy list */
 .copy-list-section {
   width: 100%;
-  max-width: 440px;
+  max-width: 720px;
 }
 
 .copy-list-header {
@@ -426,7 +426,7 @@ body {
 
 /* Chart */
 .pie-canvas {
-  border-radius: 50%;
+  border-radius: 10px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   max-width: 100%;
   height: auto;
@@ -435,7 +435,7 @@ body {
 /* Legend */
 .legend {
   width: 100%;
-  max-width: 440px;
+  max-width: 720px;
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap');
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -5,7 +7,7 @@
 }
 
 body {
-  font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+  font-family: 'M PLUS Rounded 1c', 'Helvetica Neue', Arial, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
   background: #f0f2f5;
   color: #222;
 }
@@ -335,7 +337,7 @@ body {
 /* Copy list */
 .copy-list-section {
   width: 100%;
-  max-width: 440px;
+  max-width: 720px;
 }
 
 .copy-list-header {
@@ -426,7 +428,7 @@ body {
 
 /* Chart */
 .pie-canvas {
-  border-radius: 50%;
+  border-radius: 10px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   max-width: 100%;
   height: auto;
@@ -435,7 +437,7 @@ body {
 /* Legend */
 .legend {
   width: 100%;
-  max-width: 440px;
+  max-width: 720px;
   display: flex;
   flex-direction: column;
   gap: 6px;

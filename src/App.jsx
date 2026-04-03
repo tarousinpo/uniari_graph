@@ -30,9 +30,9 @@ function parseCSV(text) {
 }
 
 const MAX_TITLE_LENGTH = 50
-const MAX_LABEL_NAME_LENGTH = 8
+const MAX_LABEL_NAME_LENGTH = 5
 const LARGE_SLICE_THRESHOLD = 0.28
-const MEDIUM_SLICE_THRESHOLD = 0.12
+const MEDIUM_SLICE_THRESHOLD = 0.15
 
 const DEFAULT_TRANSFORM = { scale: 1, offsetX: 0, offsetY: 0 }
 
@@ -133,120 +133,221 @@ function ImageTransformEditor({ index, transform, onChange, onReset, onClose }) 
   )
 }
 
+const CANVAS_W = 720
+const CANVAS_H = 540
+const LEGEND_X = 490
+const LEGEND_ROW_H = 36
+const LEGEND_THUMB_SIZE = 28
+const LEGEND_SWATCH_GAP = 7
+const POP_FONT = '"M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif'
+// Medal colors for ranks 1-4, gray for the rest
+const RANK_BADGE_COLORS = ['#E6B800', '#888888', '#C07830', '#4e9af1']
+
 function PieChart({ data, images, transforms, title }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
     if (!data || data.length === 0) return
     const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    const W = canvas.width
-    const H = canvas.height
-    const TITLE_H = 52
-    const cx = W / 2
-    const cy = TITLE_H + (H - TITLE_H) / 2
-    const R = Math.min(W, H - TITLE_H) * 0.38
+    let cancelled = false
 
-    const total = data.reduce((s, d) => s + d.value, 0)
-    if (total === 0) return
+    const draw = () => {
+      if (cancelled || !canvas) return
+      const ctx = canvas.getContext('2d')
+      const W = canvas.width
+      const H = canvas.height
+      const TITLE_H = 52
+      // Pie occupies the left portion of the canvas
+      const PIE_AREA_W = LEGEND_X - 10
+      const cx = PIE_AREA_W / 2
+      const cy = TITLE_H + (H - TITLE_H) / 2
+      const R = Math.min(PIE_AREA_W, H - TITLE_H) * 0.42
 
-    ctx.clearRect(0, 0, W, H)
+      const total = data.reduce((s, d) => s + d.value, 0)
+      if (total === 0) return
 
-    // Draw background
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, W, H)
+      ctx.clearRect(0, 0, W, H)
 
-    // Draw title
-    if (title) {
-      ctx.font = `bold ${Math.max(16, Math.round(W * 0.042))}px "Helvetica Neue", Arial, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = '#222'
-      ctx.fillText(title, W / 2, TITLE_H / 2)
-    }
+      // Draw background
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, W, H)
 
-    let startAngle = -Math.PI / 2
-    const sliceAngles = []
+      // Draw title (centered over the full canvas)
+      if (title) {
+        ctx.font = `bold ${Math.max(16, Math.round(W * 0.032))}px ${POP_FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#222'
+        ctx.fillText(title, W / 2, TITLE_H / 2)
+      }
 
-    data.forEach((item, i) => {
-      const sliceAngle = (item.value / total) * 2 * Math.PI
-      sliceAngles.push({ startAngle, sliceAngle })
+      let startAngle = -Math.PI / 2
+      const sliceAngles = []
 
-      const img = images[i]
-      if (img) {
-        ctx.save()
+      data.forEach((item, i) => {
+        const sliceAngle = (item.value / total) * 2 * Math.PI
+        sliceAngles.push({ startAngle, sliceAngle })
+
+        const img = images[i]
+        if (img) {
+          ctx.save()
+          ctx.beginPath()
+          ctx.moveTo(cx, cy)
+          ctx.arc(cx, cy, R, startAngle, startAngle + sliceAngle)
+          ctx.closePath()
+          ctx.clip()
+
+          const t = (transforms && transforms[i]) || DEFAULT_TRANSFORM
+          const baseScale = (R * 2) / Math.min(img.width, img.height)
+          const finalScale = baseScale * t.scale
+          const dw = img.width * finalScale
+          const dh = img.height * finalScale
+          const ox = (t.offsetX / 100) * R
+          const oy = (t.offsetY / 100) * R
+          ctx.drawImage(img, cx - dw / 2 + ox, cy - dh / 2 + oy, dw, dh)
+          ctx.restore()
+        } else {
+          ctx.fillStyle = COLORS[i % COLORS.length]
+          ctx.beginPath()
+          ctx.moveTo(cx, cy)
+          ctx.arc(cx, cy, R, startAngle, startAngle + sliceAngle)
+          ctx.closePath()
+          ctx.fill()
+        }
+
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 2
         ctx.beginPath()
         ctx.moveTo(cx, cy)
         ctx.arc(cx, cy, R, startAngle, startAngle + sliceAngle)
         ctx.closePath()
-        ctx.clip()
+        ctx.stroke()
 
-        const t = (transforms && transforms[i]) || DEFAULT_TRANSFORM
-        const baseScale = (R * 2) / Math.min(img.width, img.height)
-        const finalScale = baseScale * t.scale
-        const dw = img.width * finalScale
-        const dh = img.height * finalScale
-        const ox = (t.offsetX / 100) * R
-        const oy = (t.offsetY / 100) * R
-        ctx.drawImage(img, cx - dw / 2 + ox, cy - dh / 2 + oy, dw, dh)
-        ctx.restore()
-      } else {
-        ctx.fillStyle = COLORS[i % COLORS.length]
-        ctx.beginPath()
-        ctx.moveTo(cx, cy)
-        ctx.arc(cx, cy, R, startAngle, startAngle + sliceAngle)
-        ctx.closePath()
-        ctx.fill()
-      }
+        startAngle += sliceAngle
+      })
 
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(cx, cy)
-      ctx.arc(cx, cy, R, startAngle, startAngle + sliceAngle)
-      ctx.closePath()
-      ctx.stroke()
+      // Draw name + value labels inside pie slices
+      startAngle = -Math.PI / 2
+      data.forEach((item, i) => {
+        const { sliceAngle } = sliceAngles[i]
+        const midAngle = startAngle + sliceAngle / 2
 
-      startAngle += sliceAngle
-    })
+        const labelR = R * 0.65
+        const lx = cx + labelR * Math.cos(midAngle)
+        const ly = cy + labelR * Math.sin(midAngle)
 
-    // Draw name + value labels
-    startAngle = -Math.PI / 2
-    data.forEach((item, i) => {
-      const { sliceAngle } = sliceAngles[i]
-      const midAngle = startAngle + sliceAngle / 2
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.shadowColor = 'rgba(0,0,0,0.75)'
+        ctx.shadowBlur = 4
+        ctx.fillStyle = '#fff'
 
-      const labelR = R * 0.65
-      const lx = cx + labelR * Math.cos(midAngle)
-      const ly = cy + labelR * Math.sin(midAngle)
+        const valText = item.value.toLocaleString()
+        if (sliceAngle > LARGE_SLICE_THRESHOLD) {
+          // Large slice: truncated name on top line, value below
+          const displayName = item.name.length > MAX_LABEL_NAME_LENGTH
+            ? item.name.slice(0, MAX_LABEL_NAME_LENGTH - 1) + '…'
+            : item.name
+          ctx.font = `bold 13px ${POP_FONT}`
+          ctx.fillText(displayName, lx, ly - 9)
+          ctx.fillText(valText, lx, ly + 9)
+        } else if (sliceAngle > MEDIUM_SLICE_THRESHOLD) {
+          // Medium slice: value only
+          ctx.font = `bold 13px ${POP_FONT}`
+          ctx.fillText(valText, lx, ly)
+        }
+        // Slices below MEDIUM_SLICE_THRESHOLD get no label (too small to show text legibly)
 
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.shadowColor = 'rgba(0,0,0,0.75)'
-      ctx.shadowBlur = 4
-      ctx.fillStyle = '#fff'
+        ctx.shadowBlur = 0
+        startAngle += sliceAngle
+      })
 
-      const valText = item.value.toLocaleString()
-      if (sliceAngle > LARGE_SLICE_THRESHOLD) {
-        // Large slice: name on top line, value below
-        const displayName = item.name.length > MAX_LABEL_NAME_LENGTH
-          ? item.name.slice(0, MAX_LABEL_NAME_LENGTH - 1) + '…'
-          : item.name
-        ctx.font = 'bold 13px sans-serif'
-        ctx.fillText(displayName, lx, ly - 9)
-        ctx.fillText(valText, lx, ly + 9)
-      } else if (sliceAngle > MEDIUM_SLICE_THRESHOLD) {
-        // Medium slice: value only
-        ctx.font = 'bold 13px sans-serif'
-        ctx.fillText(valText, lx, ly)
-      }
+      // Draw ranked legend list on the right side of the canvas
+      const legendStartY = TITLE_H + 20
+      const legendMaxW = W - LEGEND_X - 12
 
       ctx.shadowBlur = 0
-      startAngle += sliceAngle
-    })
+
+      data.forEach((item, i) => {
+        const rowY = legendStartY + i * LEGEND_ROW_H
+        if (rowY + LEGEND_ROW_H > H) return  // don't overflow canvas
+
+        const img = images[i]
+        const isTopFour = i < 4
+        const thumbCx = LEGEND_X + LEGEND_THUMB_SIZE / 2
+        const thumbCy = rowY + LEGEND_ROW_H / 2
+        const rankColor = RANK_BADGE_COLORS[i] ?? '#999999'
+
+        if (isTopFour && img) {
+          // Draw circular image thumbnail
+          ctx.save()
+          ctx.beginPath()
+          ctx.arc(thumbCx, thumbCy, LEGEND_THUMB_SIZE / 2, 0, Math.PI * 2)
+          ctx.closePath()
+          ctx.clip()
+          const scale = LEGEND_THUMB_SIZE / Math.min(img.width, img.height)
+          ctx.drawImage(
+            img,
+            thumbCx - (img.width * scale) / 2,
+            thumbCy - (img.height * scale) / 2,
+            img.width * scale,
+            img.height * scale
+          )
+          ctx.restore()
+          // Medal-colored circle border
+          ctx.strokeStyle = rankColor
+          ctx.lineWidth = 2.5
+          ctx.beginPath()
+          ctx.arc(thumbCx, thumbCy, LEGEND_THUMB_SIZE / 2, 0, Math.PI * 2)
+          ctx.stroke()
+        } else {
+          // Colored square swatch for items without an image or rank > 4
+          ctx.fillStyle = COLORS[i % COLORS.length]
+          ctx.beginPath()
+          const thumbY = thumbCy - LEGEND_THUMB_SIZE / 2
+          if (ctx.roundRect) {
+            ctx.roundRect(LEGEND_X, thumbY, LEGEND_THUMB_SIZE, LEGEND_THUMB_SIZE, 4)
+          } else {
+            ctx.rect(LEGEND_X, thumbY, LEGEND_THUMB_SIZE, LEGEND_THUMB_SIZE)
+          }
+          ctx.fill()
+        }
+
+        // Rank + name + value text
+        const textX = LEGEND_X + LEGEND_THUMB_SIZE + LEGEND_SWATCH_GAP
+        ctx.font = `bold 13px ${POP_FONT}`
+        ctx.textBaseline = 'middle'
+        ctx.textAlign = 'left'
+
+        const rankStr = `${i + 1}.`
+        const valStr = `　${item.value.toLocaleString()}`
+        const rankW = ctx.measureText(rankStr + ' ').width
+        const valW = ctx.measureText(valStr).width
+        const nameAvailW = legendMaxW - LEGEND_THUMB_SIZE - LEGEND_SWATCH_GAP - rankW - valW
+
+        let displayName = item.name
+        if (ctx.measureText(displayName).width > nameAvailW) {
+          while (displayName.length > 1 && ctx.measureText(displayName + '…').width > nameAvailW) {
+            displayName = displayName.slice(0, -1)
+          }
+          displayName = displayName + '…'
+        }
+
+        // Rank number in medal color
+        ctx.fillStyle = rankColor
+        ctx.fillText(rankStr, textX, thumbCy)
+
+        // Name + value in dark color
+        ctx.fillStyle = '#222'
+        ctx.fillText(' ' + displayName + valStr, textX + rankW, thumbCy)
+      })
+    }
+
+    document.fonts.ready.then(() => { if (!cancelled) draw() })
+    return () => { cancelled = true }
   }, [data, images, transforms, title])
 
-  return <canvas ref={canvasRef} width={480} height={540} className="pie-canvas" />
+  return <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="pie-canvas" />
 }
 
 function App() {
